@@ -141,6 +141,9 @@ class Interval:
             f'{self.__tech_data['period_to']}.'
             f'{save_format}'
         )
-        path: Path = Path(cnst.PLOTS_DIRECTORY, file_name)
+        plot_dir = Path(cnst.PLOTS_DIRECTORY)
+        if not plot_dir.exists():
+            Path.mkdir(plot_dir)
+        path: Path = Path(plot_dir, file_name)
         plt.savefig(path, dpi=300, bbox_inches='tight')
         plt.close()
