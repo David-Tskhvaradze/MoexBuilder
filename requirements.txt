@@ -1,0 +1,2 @@
+aiohttp==3.10.9
+matplotlib==3.9.2
