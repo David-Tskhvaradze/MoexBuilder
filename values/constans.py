@@ -4,7 +4,6 @@ Module for declaring constants values.
 
 # Requests
 MOEX_REQUESTS: dict = {
-    'CALENDAR': 'https://iss.moex.com/iss/calendars/{0}.json',
     'MAIN_INFO': 'https://iss.moex.com/iss/securities/{0}.json',
     'COMPOSITION_INFO': 'https://iss.moex.com/iss/statistics/engines/stock/markets/{0}/analytics/{1}/tickers.json',
     'DETAIL_INFO': 'https://iss.moex.com/iss/engines/stock/markets/{0}/securities/{1}/candles.json?from={2}&till={3}'

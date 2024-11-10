@@ -17,7 +17,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
     Class for working with IMOEX.
     """
 
-    def __init__(self, last_trade_day) -> None:
+    def __init__(self, last_trade_day: str) -> None:
         super().__init__(tech_name='IMOEX', tech_type='index', last_trade_day=last_trade_day)
         additional_params: dict[str, list[str]] = {
             'MAIN_INFO': [self.tech_name],
@@ -26,7 +26,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         }
         self.__tech_full_info: dict[str, dict] = asyncio.run(
             Helper.generate_requests(
-                urls={name: url for name, url in cnst.MOEX_REQUESTS.items() if name in additional_params.keys()},
+                urls=cnst.MOEX_REQUESTS,
                 additional_params=additional_params
             )
         )

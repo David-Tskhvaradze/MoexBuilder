@@ -9,7 +9,7 @@ imoex = moex.imoex
 print(imoex.initialcapitalization)  # Начальная капитализация индекса IMOEX
 print(imoex.actual_composition_index_tickers)  # Тикеры акций, которые на данный момент входят в индекс IMOEX
 
-interval_imoex = imoex.interval('2024-10-01')  # Создать объект Interval для индекса IMOEX
+interval_imoex = imoex.interval('2024-03-08', soft_search='back')  # Создать объект Interval для индекса IMOEX
 print(interval_imoex.max_value)  # Словарь с данными о максимальном значении индекса IMOEX в указанный период
 print(interval_imoex.min_value)  # Словарь с данными о минимальном значении индекса IMOEX в указанный период
 print(interval_imoex.avg_value)  # Словарь с данными о среднем значении индекса IMOEX в указанный период

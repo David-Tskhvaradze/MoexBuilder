@@ -298,8 +298,7 @@ class Helper:
                    last_trade_day,
                    soft_search: None | str,
                    period_from: str,
-                   period_to: str | None = None,
-
+                   period_to: str | None = None
                    ) -> tuple[datetime.date, datetime.date]:
         """
         Function to verify that the specified string values can be converted to objects of the date class and that the
