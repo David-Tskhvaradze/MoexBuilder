@@ -6,7 +6,7 @@ Module for working with IMOEX.
 import asyncio
 
 # local imports
-import values.constans as cnst
+from values.constans import MOEX_REQUESTS
 from tech.base_instrument_moex import BaseInstrumentMOEX
 from tech.shares_imoex import SharesIMOEX
 from custom.custom_functions import Helper
@@ -17,16 +17,29 @@ class IndexIMOEX(BaseInstrumentMOEX):
     Class for working with IMOEX.
     """
 
-    def __init__(self, last_trade_day: str) -> None:
-        super().__init__(tech_name='IMOEX', tech_type='index', last_trade_day=last_trade_day)
+    def __init__(self,
+                 last_trade_day: str,
+                 weekends: list[str],
+                 workdays: list[str]
+                 ) -> None:
+        super().__init__(
+            tech_name='IMOEX',
+            tech_type='index',
+            last_trade_day=last_trade_day,
+            weekends=weekends,
+            workdays=workdays
+        )
         additional_params: dict[str, list[str]] = {
             'MAIN_INFO': [self.tech_name],
             'COMPOSITION_INFO': [self.tech_type, self.tech_name],
             'DETAIL_INFO': [self.tech_type, self.tech_name, last_trade_day, last_trade_day]
         }
+        urls: dict[str, str] = {
+            url_name: url for url_name, url in MOEX_REQUESTS.items() if url_name in additional_params.keys()
+        }
         self.__tech_full_info: dict[str, dict] = asyncio.run(
             Helper.generate_requests(
-                urls=cnst.MOEX_REQUESTS,
+                urls=urls,
                 additional_params=additional_params
             )
         )
@@ -42,7 +55,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
             Helper.get_last_value(self.__tech_full_info['DETAIL_INFO']['candles']['data'])
         )
         for ticker_name in self.actual_composition_index_tickers:
-            self.__setattr__(ticker_name, SharesIMOEX(ticker_name, last_trade_day))
+            self.__setattr__(ticker_name, SharesIMOEX(ticker_name, last_trade_day, weekends, workdays))
 
     @property
     def secid(self) -> str:

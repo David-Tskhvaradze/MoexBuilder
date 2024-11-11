@@ -3,6 +3,7 @@ Module for implementing custom functions.
 """
 
 # standard library imports
+import re
 import asyncio
 from datetime import datetime, timedelta
 from collections.abc import Generator
@@ -11,7 +12,7 @@ from collections.abc import Generator
 import aiohttp
 
 # local imports
-import values.constans as cnst
+from values.constans import CALENDAR, MOEX_REQUESTS
 import custom.custom_exceptions as ce
 
 
@@ -19,9 +20,6 @@ class Helper:
     """
     Class for implementing custom functions.
     """
-    WEEKENDS: tuple = tuple(map(lambda x: datetime.strptime(x, cnst.DATE_FRMT).date(), cnst.WEEKENDS))
-    WORKDAYS: tuple = tuple(map(lambda x: datetime.strptime(x, cnst.DATE_FRMT).date(), cnst.WORKDAYS))
-
     @staticmethod
     async def fetch(url: str, session: aiohttp.ClientSession) -> dict:
         """
@@ -40,7 +38,7 @@ class Helper:
     @classmethod
     async def generate_requests(cls,
                                 urls: dict[str, str],
-                                additional_params: dict[str, list[str]]
+                                additional_params: dict[str, list[str]] = None
                                 ) -> dict[str, dict]:
         """
         Async function which generates some tasks to create GET-request to ISS MOEX.
@@ -57,23 +55,30 @@ class Helper:
             async with asyncio.TaskGroup() as tg:
                 tasks: list[asyncio.Task] = []
                 for task_name, url in urls.items():
-                    url: str = url.format(*additional_params[task_name])
+                    if re.search(r'{\d*}', url):
+                        url: str = url.format(*additional_params[task_name])
                     tasks.append(tg.create_task(cls.fetch(url, session), name=task_name))
         all_response: dict[str, dict] = {task.get_name(): task.result() for task in tasks}
         return all_response
 
     @classmethod
-    def is_not_trade_date(cls, check_date: datetime.date) -> bool:
+    def is_not_trade_date(cls,
+                          weekends: list[str],
+                          workdays: list[str],
+                          check_date: datetime.date,
+                          ) -> bool:
         """
         Function to determine the specified day is a trading day or not.
 
         Args:
+            weekends: list of weekends
+            workdays: list of workdays
             check_date: specified date for check.
 
         Returns:
             result of check.
         """
-        return check_date in cls.WEEKENDS or (datetime.weekday(check_date) in (5, 6) and check_date not in cls.WORKDAYS)
+        return check_date in weekends or (datetime.weekday(check_date) in (5, 6) and check_date not in workdays)
 
     @staticmethod
     def to_date(date_str: str) -> datetime.date:
@@ -86,7 +91,7 @@ class Helper:
         Returns:
             date converted to object of the date class.
         """
-        return datetime.strptime(date_str, cnst.DATE_FRMT).date()
+        return datetime.strptime(date_str, CALENDAR.DATE_FRMT).date()
 
     @staticmethod
     def from_date(date_dt: datetime.date) -> str:
@@ -99,7 +104,7 @@ class Helper:
         Returns:
             date converted to string date
         """
-        return date_dt.strftime(cnst.DATE_FRMT)
+        return date_dt.strftime(CALENDAR.DATE_FRMT)
 
     @staticmethod
     def to_time(time_str: str) -> datetime.time:
@@ -112,7 +117,7 @@ class Helper:
         Returns:
             time converted to object of the time class.
         """
-        return datetime.strptime(time_str, cnst.TIME_FRMT).time()
+        return datetime.strptime(time_str, CALENDAR.TIME_FRMT).time()
 
     @staticmethod
     def from_time(time_tm: datetime.time) -> str:
@@ -125,7 +130,7 @@ class Helper:
         Returns:
             time converted to string time.
         """
-        return time_tm.strftime(cnst.TIME_FRMT)
+        return time_tm.strftime(CALENDAR.TIME_FRMT)
 
     @staticmethod
     def datetime_format(raw_datetime: str | datetime) -> datetime:
@@ -139,9 +144,9 @@ class Helper:
             object of datetime class in classic format 'YYYY-MM-DD HH:MM:SS'.
         """
         if isinstance(raw_datetime, str):
-            return datetime.strptime(raw_datetime, cnst.DATETIME_FRMT)
+            return datetime.strptime(raw_datetime, CALENDAR.DATETIME_FRMT)
         if isinstance(raw_datetime, datetime):
-            return datetime.strptime(raw_datetime.strftime(cnst.DATETIME_FRMT), cnst.DATETIME_FRMT)
+            return datetime.strptime(raw_datetime.strftime(CALENDAR.DATETIME_FRMT), CALENDAR.DATETIME_FRMT)
         raise ce.SomethingWentWrong(
             f'The specified variable type `{type(raw_datetime)}` is not supported by this function.'
         )
@@ -165,11 +170,17 @@ class Helper:
         return check_date
 
     @classmethod
-    def get_last_trade_day(cls, start_dt: datetime = datetime.now()) -> dict[str, str | bool]:
+    def get_last_trade_day(cls,
+                           weekends: list[str],
+                           workdays: list[str],
+                           start_dt: datetime = datetime.now()
+                           ) -> dict[str, str | bool]:
         """
         Function which determines last trading day and flag for trading at the moment.
 
         Args:
+            weekends: list of weekends
+            workdays: list of workdays
             start_dt: day to start check.
 
         Returns:
@@ -177,17 +188,17 @@ class Helper:
 
             Second element: flag for trading at the moment.
         """
-        if (trade_date := cls.datetime_format(start_dt)) <= cls.datetime_format(cnst.FIRST_TRADE_DAY):
-            raise ce.InitialDateLessFirstDate(f'First trading day in the year `{cnst.FIRST_TRADE_DAY}`.')
-        if trade_date.time() < cls.to_time(cnst.TIME_DAY_START):
+        if (trade_date := cls.datetime_format(start_dt)) <= cls.datetime_format(CALENDAR.FIRST_TRADE_DAY):
+            raise ce.InitialDateLessFirstDate(f'First trading day in the year `{CALENDAR.FIRST_TRADE_DAY}`.')
+        if trade_date.time() < cls.to_time(CALENDAR.TIME_DAY_START):
             trade_date: datetime.date = trade_date - timedelta(1)
-        for _ in range(cnst.MAX_DAYS_WEEKENDS):
-            if cls.is_not_trade_date(trade_date):
+        for _ in range(CALENDAR.MAX_DAYS_WEEKENDS):
+            if cls.is_not_trade_date(weekends, workdays, trade_date):
                 trade_date: datetime.date = cls.get_next_date_for_check(trade_date)
             else:
                 is_today_trade_day: bool = trade_date.date() == datetime.today().date()
                 is_trading_now: bool = is_today_trade_day and (
-                        cls.to_time(cnst.TIME_DAY_START) < trade_date.time() < cls.to_time(cnst.TIME_DAY_OVER)
+                        cls.to_time(CALENDAR.TIME_DAY_START) < trade_date.time() < cls.to_time(CALENDAR.TIME_DAY_OVER)
                 )
                 result = {
                     'last_trade_day': cls.from_date(trade_date),
@@ -195,7 +206,7 @@ class Helper:
                 }
                 return result
         raise ce.TooManyDaysOffInARow(
-            f'The number of consecutive days off cannot exceed `{cnst.MAX_DAYS_WEEKENDS}` days.'
+            f'The number of consecutive days off cannot exceed `{CALENDAR.MAX_DAYS_WEEKENDS}` days.'
         )
 
     @classmethod
@@ -260,6 +271,8 @@ class Helper:
 
     @classmethod
     def loop_check_date(cls,
+                        weekends: list[str],
+                        workdays: list[str],
                         soft_search: str,
                         period: datetime.date
                         ) -> tuple[datetime.date, datetime.date]:
@@ -267,6 +280,8 @@ class Helper:
         Function for iterating through the check dates in the specified direction until the moment of determining
             the trading date.
         Args:
+            weekends: list of weekends.
+            workdays: list of workdays.
             soft_search: If not None, the search will be applied until the next trading day.
                 `forward` - the closest forward, `back` - the closest from behind.
             period: string value of the start or end date of the period.
@@ -282,20 +297,22 @@ class Helper:
             case _:
                 raise ce.SomethingWentWrong('Unexpected value.')
 
-        for _ in range(cnst.MAX_DAYS_WEEKENDS):
-            if cls.is_not_trade_date(period):
+        for _ in range(CALENDAR.MAX_DAYS_WEEKENDS):
+            if cls.is_not_trade_date(weekends, workdays, period):
                 period: datetime = cls.get_next_date_for_check(period, go_back=go_back)
             else:
                 break
         else:
             raise ce.TooManyDaysOffInARow(
-                f'The number of consecutive days off cannot exceed `{cnst.MAX_DAYS_WEEKENDS}` days.'
+                f'The number of consecutive days off cannot exceed `{CALENDAR.MAX_DAYS_WEEKENDS}` days.'
             )
         return period
 
     @classmethod
     def check_date(cls,
-                   last_trade_day,
+                   last_trade_day: str,
+                   weekends: list[str],
+                   workdays: list[str],
                    soft_search: None | str,
                    period_from: str,
                    period_to: str | None = None
@@ -305,6 +322,8 @@ class Helper:
             specified dates are trading days.
         Args:
             last_trade_day: set to `period_to` if `period_to` is not passed.
+            weekends: lisf of weekends.
+            workdays: list of workdays.
             soft_search: If not None, the search will be applied until the next trading day.
                 `forward` - the closest forward, `back` - the closest from behind.
             period_from: string value of the start date of the period.
@@ -330,8 +349,8 @@ class Helper:
         if not Helper.is_valid_period(period_from, period_to):
             raise ce.IsNotValidPeriod('Please enter a valid date range.')
 
-        from_flag: bool = Helper.is_not_trade_date(period_from)
-        to_flag: bool = Helper.is_not_trade_date(period_to)
+        from_flag: bool = Helper.is_not_trade_date(weekends, workdays, period_from)
+        to_flag: bool = Helper.is_not_trade_date(weekends, workdays, period_to)
 
         if from_flag and to_flag:
             if soft_search is None:
@@ -340,8 +359,8 @@ class Helper:
                     f'`{Helper.from_date(period_to)}` are not trading days.'
                 )
             period_from, period_to = (
-                cls.loop_check_date(soft_search, period_from),
-                cls.loop_check_date(soft_search, period_to)
+                cls.loop_check_date(weekends, workdays, soft_search, period_from),
+                cls.loop_check_date(weekends, workdays, soft_search, period_to)
             )
 
         elif from_flag:
@@ -349,14 +368,14 @@ class Helper:
                 raise ce.SpecifiedDayIsNotTradingDay(
                     f'The specified day `{Helper.from_date(period_from)}` is not a trading day.'
                 )
-            period_from = cls.loop_check_date(soft_search, period_from)
+            period_from = cls.loop_check_date(weekends, workdays, soft_search, period_from)
 
         elif to_flag:
             if soft_search is None:
                 raise ce.SpecifiedDayIsNotTradingDay(
                     f'The specified day `{Helper.from_date(period_to)}` is not a trading day.'
                 )
-            period_to = cls.loop_check_date(soft_search, period_to)
+            period_to = cls.loop_check_date(weekends, workdays, soft_search, period_to)
 
         return period_from, period_to
 
@@ -379,12 +398,16 @@ class Helper:
 
     @classmethod
     def interval_trading_days(cls,
+                              weekends: list[str],
+                              workdays: list[str],
                               period_from: datetime.date,
                               period_to: datetime.date
                               ) -> tuple[datetime.date]:
         """
         Function for filtering interval by the trading day flag.
         Args:
+            weekends: lisf of weekends.
+            workdays: list of workdays.
             period_from: start date of the period.
             period_to: end date of the period.
 
@@ -393,7 +416,7 @@ class Helper:
         """
         full_interval: Generator = (period_from + timedelta(delta)
                                     for delta in range((period_to - period_from).days + 1))
-        return tuple(filter(lambda x: not cls.is_not_trade_date(x), full_interval))
+        return tuple(filter(lambda x: not cls.is_not_trade_date(weekends, workdays, x), full_interval))
 
     @staticmethod
     def full_requests_params(trading_days: tuple[datetime.date] | tuple[datetime.date, datetime.date],
@@ -414,7 +437,7 @@ class Helper:
         urls: dict[str, str] = {}
         additional_params: dict = {}
         for num, (url, trading_day) in enumerate(
-                zip((cnst.MOEX_REQUESTS['DETAIL_INFO'], ) * len(trading_days), trading_days), start=1
+                zip((MOEX_REQUESTS['DETAIL_INFO'], ) * len(trading_days), trading_days), start=1
         ):
             filled_task_name: str = f'{tech_name}_{num}'
             urls[filled_task_name]: dict[str, str] = url

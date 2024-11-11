@@ -9,8 +9,19 @@ class SharesIMOEX(BaseInstrumentMOEX):
     """
     Class for working with MOEX shares.
     """
-    def __init__(self, ticker_name: str, last_trade_day: str) -> None:
-        super().__init__(tech_name=ticker_name, tech_type='shares', last_trade_day=last_trade_day)
+    def __init__(self,
+                 ticker_name: str,
+                 last_trade_day: str,
+                 weekends: list[str],
+                 workdays: list[str]
+                 ) -> None:
+        super().__init__(
+            tech_name=ticker_name,
+            tech_type='shares',
+            last_trade_day=last_trade_day,
+            weekends=weekends,
+            workdays=workdays
+        )
 
     def __repr__(self):
         return f'{__class__.__name__}(ticker_name={self.tech_name})'

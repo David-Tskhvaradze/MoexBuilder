@@ -2,9 +2,13 @@
 Module for working with Moscow Exchange.
 """
 
+# standard library imports
+import asyncio
+
 # local imports
 from tech.index_imoex import IndexIMOEX
 from custom.custom_functions import Helper
+from values.constans import MOEX_REQUESTS
 
 
 class MOEX:
@@ -12,13 +16,26 @@ class MOEX:
     Class for working with Moscow Exchange.
     """
     def __init__(self):
-        self.__last_trade_day_info = Helper.get_last_trade_day()
-        self.__last_trade_day = self.__last_trade_day_info['last_trade_day']
-        self.__is_trading_now = self.__last_trade_day_info['is_trading_now']
-        self.__imoex = IndexIMOEX(last_trade_day=self.__last_trade_day)
+        self.__tech_full_info: dict[str, dict] = asyncio.run(
+            Helper.generate_requests(urls={'CALENDAR': MOEX_REQUESTS['CALENDAR']})
+        )
+        self.__off_days: list[list[str]] = self.__tech_full_info['CALENDAR']['off_days']['data']
+        self.__weekends: list[str] = [day_info[0] for day_info in self.__off_days if day_info[3] == 0]
+        self.__workdays: list[str] = [day_info[0] for day_info in self.__off_days if day_info[3] == 1]
+        self.__last_trade_day_info: dict[str, str | bool] = Helper.get_last_trade_day(
+            self.__weekends,
+            self.__workdays
+        )
+        self.__last_trade_day: str = self.__last_trade_day_info['last_trade_day']
+        self.__is_trading_now: bool = self.__last_trade_day_info['is_trading_now']
+        self.__imoex: IndexIMOEX = IndexIMOEX(
+            last_trade_day=self.__last_trade_day,
+            weekends=self.__weekends,
+            workdays=self.__workdays,
+        )
 
     @property
-    def imoex(self):
+    def imoex(self) -> IndexIMOEX:
         """
         Property for get IMOEX.
 
@@ -46,3 +63,23 @@ class MOEX:
             is_trading_now instrument.
         """
         return self.__is_trading_now
+
+    @property
+    def weekends(self) -> list[str]:
+        """
+        Property for get weekends.
+
+        Returns:
+            list of weekends.
+        """
+        return self.__weekends
+
+    @property
+    def workdays(self) -> list[str]:
+        """
+        Property for get workdays.
+
+        Returns:
+            list of workdays.
+        """
+        return self.__workdays

@@ -16,10 +16,18 @@ class BaseInstrumentMOEX:
     """
     Class for working with MOEX instrument.
     """
-    def __init__(self, tech_name: str, tech_type: str, last_trade_day: str) -> None:
-        self.__tech_name = tech_name
-        self.__tech_type = tech_type
-        self.__last_trade_day = last_trade_day
+    def __init__(self,
+                 tech_name: str,
+                 tech_type: str,
+                 last_trade_day: str,
+                 weekends: list[str],
+                 workdays: list[str]
+                 ) -> None:
+        self.__tech_name: str = tech_name
+        self.__tech_type: str = tech_type
+        self.__last_trade_day: str = last_trade_day
+        self.__weekends: list[str] = weekends
+        self.__workdays: list[str] = workdays
 
     def dynamics(self,
                  period_from: str,
@@ -43,6 +51,8 @@ class BaseInstrumentMOEX:
         """
         period: tuple[datetime.date, datetime.date] = Helper.check_date(
             self.__last_trade_day,
+            self.__weekends,
+            self.__workdays,
             soft_search,
             period_from,
             period_to
@@ -79,12 +89,14 @@ class BaseInstrumentMOEX:
         """
         period_from, period_to = Helper.check_date(
             self.__last_trade_day,
+            self.__weekends,
+            self.__workdays,
             soft_search,
             period_from,
             period_to
         )
         period: dict[str, datetime.date] = {'period_from': period_from, 'period_to': period_to}
-        trading_days = Helper.interval_trading_days(period_from, period_to)
+        trading_days: tuple = Helper.interval_trading_days(self.__weekends, self.__workdays, period_from, period_to)
         urls, additional_params = Helper.full_requests_params(trading_days, self.__tech_name, self.__tech_type)
 
         interval_info_raw: dict[str, dict] = asyncio.run(
