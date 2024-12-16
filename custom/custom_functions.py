@@ -32,7 +32,7 @@ class Helper:
         Returns:
             response to the request in the format JSON.
         """
-        async with session.get(url) as response:
+        async with session.get(url, ssl=False) as response:
             return await response.json()
 
     @classmethod
@@ -51,13 +51,14 @@ class Helper:
         Returns:
             result of the task group execution.
         """
-        async with aiohttp.ClientSession() as session:
-            async with asyncio.TaskGroup() as tg:
-                tasks: list[asyncio.Task] = []
-                for task_name, url in urls.items():
-                    if re.search(r'{\d*}', url):
-                        url: str = url.format(*additional_params[task_name])
-                    tasks.append(tg.create_task(cls.fetch(url, session), name=task_name))
+        connector = aiohttp.TCPConnector(limit=1000)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            tasks: list[asyncio.Task] = []
+            for task_name, url in urls.items():
+                if re.search(r'{\d*}', url):
+                    url: str = url.format(*additional_params[task_name])
+                tasks.append(asyncio.create_task(cls.fetch(url, session), name=task_name))
+            await asyncio.gather(*tasks)
         all_response: dict[str, dict] = {task.get_name(): task.result() for task in tasks}
         return all_response
 
@@ -174,7 +175,7 @@ class Helper:
                            weekends: list[str],
                            workdays: list[str],
                            start_dt: datetime = datetime.now()
-                           ) -> dict[str, str | bool]:
+                           ) -> dict:
         """
         Function which determines last trading day and flag for trading at the moment.
 
@@ -212,7 +213,7 @@ class Helper:
     @classmethod
     def get_composition_moex(cls,
                              data: list[list[str]]
-                             ) -> dict[str, dict[str, dict[str, str]] | list[str]]:
+                             ) -> dict[str, dict[str, dict]]:
         """
         Function for determining the composition of the MOEX.
 
