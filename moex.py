@@ -53,10 +53,10 @@ class MOEX:
     @property
     def rgbi(self) -> RGBI:
         """
-        Property for get IMOEX.
+        Property for get RGBI.
 
         Returns:
-            IMOEX.
+            RGBI.
         """
         return self.__rgbi
 
