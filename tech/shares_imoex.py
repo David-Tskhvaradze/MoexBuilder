@@ -2,10 +2,10 @@
 Module for working with MOEX shares.
 """
 
-from tech.base_instrument_moex import BaseInstrumentMOEX
+from tech.base_instrument import BaseInstrument
 
 
-class SharesIMOEX(BaseInstrumentMOEX):
+class SharesIMOEX(BaseInstrument):
     """
     Class for working with MOEX shares.
     """

@@ -6,7 +6,8 @@ Module for working with Moscow Exchange.
 import asyncio
 
 # local imports
-from tech.index_imoex import IndexIMOEX
+from tech.imoex import IMOEX
+from tech.rgbi import RGBI
 from custom.custom_functions import Helper
 from values.constans import MOEX_REQUESTS
 
@@ -28,14 +29,19 @@ class MOEX:
         )
         self.__last_trade_day: str = self.__last_trade_day_info['last_trade_day']
         self.__is_trading_now: bool = self.__last_trade_day_info['is_trading_now']
-        self.__imoex: IndexIMOEX = IndexIMOEX(
+        self.__imoex: IMOEX = IMOEX(
+            last_trade_day=self.__last_trade_day,
+            weekends=self.__weekends,
+            workdays=self.__workdays,
+        )
+        self.__rgbi: RGBI = RGBI(
             last_trade_day=self.__last_trade_day,
             weekends=self.__weekends,
             workdays=self.__workdays,
         )
 
     @property
-    def imoex(self) -> IndexIMOEX:
+    def imoex(self) -> IMOEX:
         """
         Property for get IMOEX.
 
@@ -43,6 +49,16 @@ class MOEX:
             IMOEX.
         """
         return self.__imoex
+
+    @property
+    def rgbi(self) -> RGBI:
+        """
+        Property for get IMOEX.
+
+        Returns:
+            IMOEX.
+        """
+        return self.__rgbi
 
     @property
     def last_trade_day(self) -> str:

@@ -10,6 +10,7 @@ from collections.abc import Generator
 
 # third party imports
 import aiohttp
+from aiocache import cached, caches, Cache
 
 # local imports
 from values.constans import CALENDAR, MOEX_REQUESTS
@@ -36,6 +37,7 @@ class Helper:
             return await response.json()
 
     @classmethod
+    @cached(ttl=30, cache=Cache.MEMORY)
     async def generate_requests(cls,
                                 urls: dict[str, str],
                                 additional_params: dict[str, list[str]] = None

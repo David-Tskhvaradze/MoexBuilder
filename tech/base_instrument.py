@@ -12,7 +12,7 @@ from tech.interval import Interval
 from custom.custom_functions import Helper
 
 
-class BaseInstrumentMOEX:
+class BaseInstrument:
     """
     Class for working with MOEX instrument.
     """

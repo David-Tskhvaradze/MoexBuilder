@@ -1,5 +1,5 @@
 """
-Module for working with IMOEX.
+Module for working with indices.
 """
 
 # standard library imports
@@ -7,23 +7,23 @@ import asyncio
 
 # local imports
 from values.constans import MOEX_REQUESTS
-from tech.base_instrument_moex import BaseInstrumentMOEX
-from tech.shares_imoex import SharesIMOEX
+from tech.base_instrument import BaseInstrument
 from custom.custom_functions import Helper
 
 
-class IndexIMOEX(BaseInstrumentMOEX):
+class BaseIndex(BaseInstrument):
     """
-    Class for working with IMOEX.
+    Class for working with indices.
     """
 
     def __init__(self,
+                 tech_name: str,
                  last_trade_day: str,
                  weekends: list[str],
                  workdays: list[str]
                  ) -> None:
         super().__init__(
-            tech_name='IMOEX',
+            tech_name=tech_name,
             tech_type='index',
             last_trade_day=last_trade_day,
             weekends=weekends,
@@ -31,7 +31,6 @@ class IndexIMOEX(BaseInstrumentMOEX):
         )
         additional_params: dict[str, list[str]] = {
             'MAIN_INFO': [self.tech_name],
-            'COMPOSITION_INFO': [self.tech_type, self.tech_name],
             'DETAIL_INFO': [self.tech_type, self.tech_name, last_trade_day, last_trade_day]
         }
         urls: dict[str, str] = {
@@ -44,18 +43,10 @@ class IndexIMOEX(BaseInstrumentMOEX):
             )
         )
         self.__tech_main_data: list[list[str]] = self.__tech_full_info['MAIN_INFO']['description']['data']
-        self.__main_info: dict[str, str] = {item[0]: item[2] for item in self.__tech_main_data}
-        self.__tech_composition_data: list[list[str]] = (
-            self.__tech_full_info
-        )['COMPOSITION_INFO']['tickers']['data']
-        self.__composition_index: dict[str, dict[str, dict[str, str]] | list[str]] = Helper.get_composition_moex(
-            self.__tech_composition_data
-        )
+        self._main_info: dict[str, str] = {item[0]: item[2] for item in self.__tech_main_data}
         self.__last_detail_info: dict[str, str | float] = (
             Helper.get_last_value(self.__tech_full_info['DETAIL_INFO']['candles']['data'])
         )
-        for ticker_name in self.actual_composition_index_tickers:
-            self.__setattr__(ticker_name, SharesIMOEX(ticker_name, last_trade_day, weekends, workdays))
 
     @property
     def secid(self) -> str:
@@ -65,7 +56,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             secid of index.
         """
-        return self.__main_info['SECID']
+        return self._main_info['SECID']
 
     @property
     def name(self) -> str:
@@ -75,7 +66,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             name of index.
         """
-        return self.__main_info['NAME']
+        return self._main_info['NAME']
 
     @property
     def latname(self) -> str:
@@ -85,7 +76,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             latname of index.
         """
-        return self.__main_info['LATNAME']
+        return self._main_info['LATNAME']
 
     @property
     def currencyid(self) -> str:
@@ -95,7 +86,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             currencyid of index.
         """
-        return self.__main_info['CURRENCYID']
+        return self._main_info['CURRENCYID']
 
     @property
     def initialvalue(self) -> int:
@@ -105,7 +96,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             initialvalue of index.
         """
-        return int(self.__main_info['INITIALVALUE'])
+        return int(self._main_info['INITIALVALUE'])
 
     @property
     def issuedate(self) -> str:
@@ -115,47 +106,7 @@ class IndexIMOEX(BaseInstrumentMOEX):
         Returns:
             issuedate of index.
         """
-        return self.__main_info['ISSUEDATE']
-
-    @property
-    def initialcapitalization(self) -> float:
-        """
-        Property for get initialcapitalization.
-
-        Returns:
-            initialcapitalization of index.
-        """
-        return float(self.__main_info['INITIALCAPITALIZATION'])
-
-    @property
-    def full_composition_index(self) -> dict:
-        """
-        Property for get full_composition_index.
-
-        Returns:
-            full_composition_index of index.
-        """
-        return self.__composition_index['full_result']
-
-    @property
-    def actual_composition_index(self) -> dict:
-        """
-        Property for get actual_composition_index.
-
-        Returns:
-            actual_composition_index of index.
-        """
-        return self.__composition_index['actual_result']
-
-    @property
-    def actual_composition_index_tickers(self) -> list:
-        """
-        Property for get actual_composition_index_tickers.
-
-        Returns:
-            actual_composition_index_tickers of index.
-        """
-        return self.__composition_index['ticker_names']
+        return self._main_info['ISSUEDATE']
 
     @property
     def last_detail_info(self) -> dict:
